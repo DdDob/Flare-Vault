@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flare Vault — Live Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --void: #0B0D0F; --panel: #14171A; --panelAlt: #0F1113;
+    --line: #262B2F; --lineSoft: #1C2024;
+    --ink: #E9EDEF; --inkDim: #8A9299; --redacted: #4A5157;
+    --ember: #FF5A3C; --emberOn: #0B0D0F;
+    --cipher: #35E0C4; --cipherWash: rgba(53,224,196,0.12); --cipherBorder: rgba(53,224,196,0.35);
+    --glowA: rgba(255,90,60,0.10); --glowB: rgba(53,224,196,0.08);
+  }
+  [data-theme="light"] {
+    --void: #EEF0F1; --panel: #FFFFFF; --panelAlt: #F5F6F7;
+    --line: #DBE0E3; --lineSoft: #E7EAEC;
+    --ink: #14171A; --inkDim: #5B6368; --redacted: #B9BFC3;
+    --ember: #D9431C; --emberOn: #FFFFFF;
+    --cipher: #0B9084; --cipherWash: rgba(11,144,132,0.08); --cipherBorder: rgba(11,144,132,0.35);
+    --glowA: rgba(217,67,28,0.07); --glowB: rgba(11,144,132,0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, var(--glowA), transparent 45%),
+      radial-gradient(ellipse at 90% 10%, var(--glowB), transparent 40%),
+      var(--void);
+    color: var(--ink);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    transition: background 0.3s, color 0.3s;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand svg { color: var(--ember); }
+  .brand span { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+  .chain-badge {
+    margin-left: 12px; display: flex; align-items: center; gap: 6px;
+    font-size: 11px; padding: 4px 10px; border-radius: 999px;
+    background: var(--panel); color: var(--inkDim); border: 1px solid var(--line);
+  }
+  .chain-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cipher); }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .icon-btn {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; background: var(--panel); border: 1px solid var(--line);
+    color: var(--inkDim); cursor: pointer;
+  }
+  .wallet-btn {
+    display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500;
+    padding: 9px 14px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--ember); color: var(--emberOn);
+  }
+  .wallet-btn.connected { background: var(--panel); color: var(--cipher); border: 1px solid var(--line); }
+  main { max-width: 880px; margin: 0 auto; padding: 32px 24px; }
+  .intro { font-size: 14px; line-height: 1.6; color: var(--inkDim); max-width: 56ch; margin-bottom: 32px; }
+  .live-tag { color: var(--cipher); font-size: 11px; margin-left: 6px; }
+
+  .ticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  @media (max-width: 640px) { .ticker-grid { grid-template-columns: repeat(2, 1fr); } }
+  .ticker-card { border-radius: 12px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); }
+  .ticker-card .feed { font-size: 12px; color: var(--inkDim); margin-bottom: 4px; }
+  .ticker-card .price { font-size: 18px; font-weight: 500; color: var(--ember); }
+
+  .panel { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); margin-bottom: 24px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .panel-head .title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  .commit-hash { font-size: 12px; color: var(--inkDim); }
+  .reveal-btn {
+    display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500;
+    padding: 7px 12px; border-radius: 8px; border: 1px solid var(--cipherBorder);
+    background: var(--cipherWash); color: var(--cipher); cursor: pointer;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--lineSoft); font-size: 14px; }
+  .row:last-child { border-bottom: none; }
+  .row .val { color: var(--redacted); }
+  .row .val.revealed { color: var(--ink); }
+  .total-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--panel); border-top: 1px solid var(--line); }
+  .total-row .label { font-size: 14px; font-weight: 500; color: var(--inkDim); }
+  .total-row .amount { font-size: 20px; font-weight: 700; color: var(--redacted); }
+  .total-row .amount.revealed { color: var(--cipher); }
+
+  .log-body { padding: 16px 20px; font-size: 12px; max-height: 180px; overflow-y: auto; background: var(--panelAlt); }
+  .log-line { color: var(--inkDim); margin-bottom: 6px; }
+  .log-line .ts { color: var(--cipher); }
+  .footnote { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--redacted); padding-top: 8px; }
+  .real-badge {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px;
+    border-radius: 999px; background: var(--cipherWash); color: var(--cipher); margin-left: 8px;
+  }
+  .sim-badge {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px;
+    border-radius: 999px; background: rgba(255,90,60,0.1); color: var(--ember); margin-left: 8px;
+  }
+  a.explorer-link { color: var(--cipher); text-decoration: none; }
+</style>
+</head>
+<body data-theme="dark">
+
+<header>
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M8.5 14.5A2.5 2.5 0 0011 17a2.5 2.5 0 002.5-2.5c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7.5 7.5 0 11-15 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/></svg>
+    <span>FLARE VAULT</span>
+    <span class="chain-badge"><span class="dot"></span> Coston2 · chain 114</span>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="themeToggle" title="Toggle theme">🌙</button>
+    <button class="wallet-btn" id="walletBtn">Connect Wallet</button>
+  </div>
+</header>
+
+<main>
+  <p class="intro">
+    A private, cross-chain portfolio tracker on Flare. Prices below are pulled <b>live</b>
+    from the deployed <span class="mono">FtsoV2Consumer</span> contract on Coston2 — refreshed every few seconds,
+    straight from Flare's FTSOv2 oracle. Holdings are committed on-chain as a hash;
+    only you can compute the real USD value.
+  </p>
+
+  <div class="ticker-grid" id="tickerGrid">
+    <div class="ticker-card"><div class="feed">FLR/USD</div><div class="price">loading…</div></div>
+    <div class="ticker-card"><div class="feed">BTC/USD</div><div class="price">loading…</div></div>
+    <div class="ticker-card"><div class="feed">ETH/USD</div><div class="price">loading…</div></div>
+    <div class="ticker-card"><div class="feed">XRP/USD</div><div class="price">loading…</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="title">
+        🛡️ Holdings — commitment
+        <span class="commit-hash mono" id="commitHash">0x—</span>
+        <span class="sim-badge">sample data</span>
+      </div>
+      <button class="reveal-btn" id="revealBtn">🔒 Reveal via TEE</button>
+    </div>
+    <div id="holdingsRows"></div>
+    <div class="total-row">
+      <span class="label">TOTAL VALUE</span>
+      <span class="amount mono" id="totalAmount">••••••••</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="title">📟 ACTIVITY LOG <span class="real-badge">● live RPC calls</span></div>
+    </div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+
+  <div class="footnote">
+    ⓘ Prices are read live via <span class="mono">eth_call</span> to
+    <span class="mono">FtsoV2Consumer</span> at
+    <a class="explorer-link" href="https://coston2-explorer.flare.network/address/0xE6eA788371EbB0620500b048Bae2e1A790fd464C" target="_blank">0xE6eA…464C</a>.
+    Holdings amounts are sample data for demo purposes — see README for the private-compute flow.
+  </div>
+</main>
+
+<script>
+const RPC_URL = "https://coston2-api.flare.network/ext/C/rpc";
+const FTSO_CONSUMER = "0xE6eA788371EbB0620500b048Bae2e1A790fd464C";
+const PORTFOLIO_VAULT = "0x2f3C9E4C839D8a0b8DD26D2073d28c7990938723";
+const SELECTOR_GET_ALL_PRICES = "445df9d6";
+const SELECTOR_HAS_POSITION = "1334becc";
+
+const FEEDS = ["FLR/USD", "BTC/USD", "ETH/USD", "XRP/USD"];
+const ASSETS = [
+  { symbol: "FLR", feedIndex: 0, realAmount: 128400 },
+  { symbol: "FBTC", feedIndex: 1, realAmount: 0.09 },
+  { symbol: "WETH", feedIndex: 2, realAmount: 1.85 },
+  { symbol: "FXRP", feedIndex: 3, realAmount: 3200 },
+];
+
+let latestPrices = null; // { values:[BigInt], decimals:[Number] }
+let revealed = false;
+
+function log(msg) {
+  const el = document.getElementById('logBody');
+  const time = new Date().toLocaleTimeString();
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="ts">[${time}]</span> ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function fakeCommitHash(seed) {
+  const chars = "0123456789abcdef";
+  let out = "0x", s = seed;
+  for (let i = 0; i < 40; i++) { s = (s * 9301 + 49297) % 233280; out += chars[Math.floor((s/233280)*16)]; }
+  return out;
+}
+document.getElementById('commitHash').textContent =
+  fakeCommitHash(42).slice(0,10) + '…' + fakeCommitHash(42).slice(-6);
+
+async function ethCall(to, dataHex) {
+  const body = {
+    jsonrpc: "2.0", id: 1, method: "eth_call",
+    params: [{ to, data: "0x" + dataHex }, "latest"]
+  };
+  const res = await fetch(RPC_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message || "RPC error");
+  return json.result; // hex string
+}
+
+function decodeGetAllPrices(hex) {
+  const data = hex.slice(2);
+  const word = (i) => data.slice(i*64, i*64+64);
+  const toBig = (w) => BigInt("0x" + (w || "0"));
+
+  const offsetValues = Number(toBig(word(0))) * 2; // hex chars
+  const offsetDecimals = Number(toBig(word(1))) * 2;
+  const timestamp = toBig(word(2));
+
+  const lenValues = Number(toBig(data.slice(offsetValues, offsetValues+64)));
+  const values = [];
+  for (let i = 0; i < lenValues; i++) {
+    const start = offsetValues + 64 + i*64;
+    values.push(toBig(data.slice(start, start+64)));
+  }
+
+  const lenDecimals = Number(toBig(data.slice(offsetDecimals, offsetDecimals+64)));
+  const decimals = [];
+  for (let i = 0; i < lenDecimals; i++) {
+    const start = offsetDecimals + 64 + i*64;
+    let v = toBig(data.slice(start, start+64));
+    if (v > (2n**255n)) v -= (2n**256n); // sign extend
+    decimals.push(Number(v));
+  }
+
+  return { values, decimals, timestamp };
+}
+
+function formatPrice(value, decimals) {
+  const v = Number(value) / Math.pow(10, decimals);
+  if (v > 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (v > 1) return v.toFixed(2);
+  return v.toFixed(4);
+}
+
+async function refreshPrices() {
+  try {
+    const result = await ethCall(FTSO_CONSUMER, SELECTOR_GET_ALL_PRICES);
+    const decoded = decodeGetAllPrices(result);
+    latestPrices = decoded;
+    const cards = document.querySelectorAll('.ticker-card');
+    FEEDS.forEach((feed, i) => {
+      const priceStr = formatPrice(decoded.values[i], decoded.decimals[i]);
+      cards[i].querySelector('.price').textContent = "$" + priceStr;
+    });
+    log(`Fetched live prices from FtsoV2Consumer — timestamp ${decoded.timestamp}`);
+    renderHoldings();
+  } catch (err) {
+    log(`⚠ Price fetch failed: ${err.message}`);
+  }
+}
+
+function renderHoldings() {
+  const rows = document.getElementById('holdingsRows');
+  rows.innerHTML = '';
+  let total = 0;
+  ASSETS.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const priceOk = latestPrices && latestPrices.values[a.feedIndex] !== undefined;
+    let usdValue = 0;
+    if (priceOk) {
+      const p = Number(latestPrices.values[a.feedIndex]) / Math.pow(10, latestPrices.decimals[a.feedIndex]);
+      usdValue = p * a.realAmount;
+      total += usdValue;
+    }
+    row.innerHTML = `<span>${a.symbol}</span><span class="val mono ${revealed ? 'revealed' : ''}">${revealed ? a.realAmount.toLocaleString() : '••••••••'}</span>`;
+    rows.appendChild(row);
+  });
+  const totalEl = document.getElementById('totalAmount');
+  totalEl.textContent = revealed ? ('$' + total.toLocaleString(undefined, {maximumFractionDigits:2})) : '••••••••';
+  totalEl.className = 'amount mono' + (revealed ? ' revealed' : '');
+}
+
+document.getElementById('revealBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('revealBtn');
+  if (revealed) {
+    revealed = false;
+    renderHoldings();
+    btn.innerHTML = '🔒 Reveal via TEE';
+    log('Valuation hidden again.');
+    return;
+  }
+  btn.innerHTML = '⏳ computing…';
+  log('Instruction sent → PortfolioInstructionSender.sendValueHoldings() [simulated for demo]');
+  try {
+    const walletAddrPadded = "0000000000000000000000d888908280ba9195c67f170282dc519790fd8ce".padStart(64,'0');
+    const hasPosResult = await ethCall(PORTFOLIO_VAULT, SELECTOR_HAS_POSITION + walletAddrPadded);
+    log(`Read PortfolioVault.hasPosition() on-chain → raw result ${hasPosResult.slice(0,20)}…`);
+  } catch (e) {
+    log('Could not read PortfolioVault (ok if no position committed yet).');
+  }
+  setTimeout(() => log('Enclave computed USD valuation from raw holdings (simulated).'), 500);
+  setTimeout(() => {
+    revealed = true;
+    renderHoldings();
+    btn.innerHTML = '🔓 Hide';
+    log('Result returned — raw amounts never left the enclave (simulated for demo).');
+  }, 1100);
+});
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const body = document.body;
+  const isDark = body.getAttribute('data-theme') === 'dark';
+  body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+});
+
+document.getElementById('walletBtn').addEventListener('click', function() {
+  this.textContent = '0xd888…d8CE';
+  this.classList.add('connected');
+  log('Wallet connected: 0xd888…d8CE (display only — reads use public RPC)');
+});
+
+log('Flare Vault demo loaded — fetching live FTSOv2 prices from Coston2…');
+refreshPrices();
+setInterval(refreshPrices, 6000);
+</script>
+</body>
+</html>
