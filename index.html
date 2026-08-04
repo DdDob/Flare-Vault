@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flare Vault — Live Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --void: #0B0D0F; --panel: #14171A; --panelAlt: #0F1113;
+    --line: #262B2F; --lineSoft: #1C2024;
+    --ink: #E9EDEF; --inkDim: #8A9299; --redacted: #4A5157;
+    --ember: #FF5A3C; --emberOn: #0B0D0F;
+    --gold: #FFB020; --ignite: #FF2E63;
+    --cipher: #35E0C4; --cipherWash: rgba(53,224,196,0.12); --cipherBorder: rgba(53,224,196,0.35);
+    --glowA: rgba(255,90,60,0.10); --glowB: rgba(53,224,196,0.08);
+  }
+  [data-theme="light"] {
+    --void: #EEF0F1; --panel: #FFFFFF; --panelAlt: #F5F6F7;
+    --line: #DBE0E3; --lineSoft: #E7EAEC;
+    --ink: #14171A; --inkDim: #5B6368; --redacted: #B9BFC3;
+    --ember: #D9431C; --emberOn: #FFFFFF;
+    --gold: #C97A0E; --ignite: #C4184A;
+    --cipher: #0B9084; --cipherWash: rgba(11,144,132,0.08); --cipherBorder: rgba(11,144,132,0.35);
+    --glowA: rgba(217,67,28,0.07); --glowB: rgba(11,144,132,0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; position: relative; overflow-x: hidden;
+    background: var(--void);
+    color: var(--ink);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    transition: background 0.3s, color 0.3s;
+  }
+  /* --- Brand glow: a breathing sapphire/indigo burst in the top-right corner --- */
+  .flare-glow {
+    position: fixed; top: -20vw; right: -20vw; width: 60vw; height: 60vw;
+    max-width: 620px; max-height: 620px;
+    background: radial-gradient(circle at 35% 65%,
+      rgba(255,46,99,0.35) 0%,
+      rgba(255,90,60,0.28) 22%,
+      rgba(255,176,32,0.16) 45%,
+      transparent 70%);
+    filter: blur(10px);
+    pointer-events: none;
+    z-index: 0;
+    animation: flareBreathe 7s ease-in-out infinite;
+  }
+  .flare-glow::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 40% 60%, rgba(255,220,150,0.5) 0%, transparent 8%);
+    animation: flareFlicker 2.6s ease-in-out infinite;
+  }
+  @keyframes flareBreathe {
+    0%, 100% { opacity: 0.75; transform: scale(1) translate(0,0); }
+    50% { opacity: 1; transform: scale(1.08) translate(-1%, 1%); }
+  }
+  @keyframes flareFlicker {
+    0%, 100% { opacity: 0.5; }
+    30% { opacity: 0.9; }
+    60% { opacity: 0.4; }
+    80% { opacity: 0.8; }
+  }
+  header, main { position: relative; z-index: 1; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Sign-in gate */
+  .signin-screen {
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 40px 24px; position: relative; z-index: 1;
+  }
+  .signin-logo { width: 96px; height: 96px; border-radius: 22px; margin-bottom: 20px; box-shadow: 0 8px 40px rgba(47,111,255,0.35); }
+  .signin-screen h1 { font-size: 26px; margin: 0 0 10px 0; letter-spacing: -0.02em; }
+  .signin-tagline { color: var(--inkDim); font-size: 14px; max-width: 42ch; margin-bottom: 28px; }
+  .wallet-btn.large { font-size: 15px; padding: 13px 28px; border-radius: 10px; }
+  .signin-divider { color: var(--redacted); font-size: 12px; margin: 18px 0; }
+  .signin-alt-row { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 320px; }
+  .alt-btn {
+    padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
+    color: var(--redacted); font-size: 13px; cursor: not-allowed; font-family: 'Space Grotesk', sans-serif;
+  }
+  .signin-note { color: var(--redacted); font-size: 11px; max-width: 38ch; margin-top: 18px; line-height: 1.5; }
+
+  /* Brand logo image (real, uploaded) */
+  .brand-logo { width: 26px; height: 26px; border-radius: 7px; object-fit: cover; }
+
+  /* Tab navigation */
+  .tab-nav {
+    display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--line);
+    overflow-x: auto; max-width: 880px; margin: 0 auto; position: relative; z-index: 1;
+  }
+  .tab-btn {
+    background: none; border: none; color: var(--inkDim); font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 500; padding: 14px 16px; min-height: 48px; cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+  .tab-btn:active { opacity: 0.7; }
+  .tab-btn.active { color: var(--cipher); border-bottom-color: var(--cipher); }
+  .soon-tag {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 6px; border-radius: 999px;
+    background: rgba(255,255,255,0.08); color: var(--redacted);
+  }
+
+  /* Roadmap cards (Whisper Market / FlareBox AI) */
+  .roadmap-card { border-radius: 16px; border: 1px dashed var(--line); padding: 28px 24px; background: var(--panel); }
+  .roadmap-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px; background: var(--cipherWash); color: var(--cipher); margin-bottom: 14px;
+  }
+  .roadmap-card h2 { font-size: 19px; margin: 0 0 12px 0; }
+  .roadmap-card p { font-size: 14px; line-height: 1.6; color: var(--inkDim); margin: 0 0 12px 0; }
+  .roadmap-why { font-size: 12px !important; color: var(--redacted) !important; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 16px !important; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; gap: 10px; position: sticky; top: 0; background: var(--void); z-index: 10; }
+  .tab-panel { animation: tabFadeIn 0.25s ease; }
+  @keyframes tabFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand svg { color: var(--ember); }
+  .brand span { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+  .chain-badge { margin-left: 12px; display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 10px; border-radius: 999px; background: var(--panel); color: var(--inkDim); border: 1px solid var(--line); }
+  .chain-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cipher); }
+  .chain-badge.wrong .dot { background: var(--ember); }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); color: var(--inkDim); cursor: pointer; transition: transform 0.1s ease, background 0.2s ease; }
+  .icon-btn:active { transform: scale(0.94); background: var(--lineSoft); }
+  .wallet-btn { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; padding: 11px 16px; min-height: 44px; border-radius: 10px; border: none; cursor: pointer; background: var(--ember); color: var(--emberOn); transition: transform 0.1s ease, opacity 0.2s ease; }
+  .wallet-btn:active { transform: scale(0.97); }
+  .wallet-btn.wc-btn { background: var(--panel); color: var(--cipher); border: 1px solid var(--cipherBorder); }
+  .wallet-btn.connected { background: var(--panel); color: var(--cipher); border: 1px solid var(--line); }
+  main { max-width: 880px; margin: 0 auto; padding: 32px 24px; }
+  .intro { font-size: 14px; line-height: 1.6; color: var(--inkDim); max-width: 60ch; margin-bottom: 24px; }
+  .warn-banner { background: rgba(255,90,60,0.1); border: 1px solid rgba(255,90,60,0.3); color: var(--ember); font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-bottom: 24px; display: none; }
+
+  .ticker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  @media (max-width: 640px) { .ticker-grid { grid-template-columns: repeat(2, 1fr); } }
+  .ticker-card { border-radius: 12px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); }
+  .ticker-card .feed { font-size: 12px; color: var(--inkDim); margin-bottom: 4px; }
+  .ticker-card .price { font-size: 18px; font-weight: 500; color: var(--ember); }
+  .health-card { border-radius: 12px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); }
+  .health-card .feed { font-size: 12px; color: var(--inkDim); margin-bottom: 4px; }
+  .health-card .value { font-size: 18px; font-weight: 500; color: var(--cipher); }
+
+  .panel { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); margin-bottom: 20px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; gap: 8px; }
+  .panel-head .title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+  .commit-hash { font-size: 12px; color: var(--inkDim); }
+  .btn { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; padding: 10px 14px; min-height: 40px; border-radius: 9px; border: 1px solid var(--cipherBorder); background: var(--cipherWash); color: var(--cipher); cursor: pointer; transition: transform 0.1s ease, opacity 0.2s ease; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { transform: none; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.ember { border-color: rgba(255,90,60,0.35); background: rgba(255,90,60,0.1); color: var(--ember); }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--lineSoft); font-size: 14px; }
+  .row:last-child { border-bottom: none; }
+  .row .val { color: var(--redacted); }
+  .row .val.revealed { color: var(--ink); }
+  .total-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--panel); border-top: 1px solid var(--line); }
+  .total-row .label { font-size: 14px; font-weight: 500; color: var(--inkDim); }
+  .total-row .amount { font-size: 20px; font-weight: 700; color: var(--redacted); }
+  .total-row .amount.revealed { color: var(--cipher); }
+
+  .countdown-hero {
+    text-align: center; padding: 28px 20px; background: var(--panelAlt);
+    border-bottom: 1px solid var(--line);
+  }
+  .countdown-label { font-size: 11px; letter-spacing: 0.08em; color: var(--inkDim); margin-bottom: 8px; text-transform: uppercase; }
+  .countdown-value {
+    font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 700;
+    color: var(--cipher); transition: color 0.4s ease;
+  }
+  .countdown-value.warn { color: var(--gold); }
+  .countdown-value.danger { color: var(--ember); animation: countdownPulse 1s ease-in-out infinite; }
+  @keyframes countdownPulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.6; }
+  }
+
+  .panel-body { padding: 16px 20px; }
+  .field-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .field-row input {
+    flex: 1; min-width: 160px; background: var(--panelAlt); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 9px; padding: 10px 12px; min-height: 44px; font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    transition: border-color 0.2s ease;
+  }
+  .field-row input:focus { outline: none; border-color: var(--cipher); }
+  .field-label { font-size: 12px; color: var(--inkDim); margin-bottom: 4px; }
+  .status-line { font-size: 12px; color: var(--inkDim); margin-top: 8px; word-break: break-all; }
+  .status-line.ok { color: var(--cipher); }
+  .status-line.err { color: var(--ember); }
+
+  .log-body { padding: 16px 20px; font-size: 12px; max-height: 200px; overflow-y: auto; background: var(--panelAlt); }
+  .log-line { color: var(--inkDim); margin-bottom: 6px; }
+  .log-line .ts { color: var(--cipher); }
+  .footnote { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--redacted); padding-top: 8px; }
+  a.explorer-link { color: var(--cipher); text-decoration: none; }
+</style>
+</head>
+<body data-theme="dark">
+<div class="flare-glow"></div>
+
+<div id="appShell">
+
+<header>
+  <div class="brand">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="flameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" stop-color="var(--ignite)"/>
+          <stop offset="55%" stop-color="var(--ember)"/>
+          <stop offset="100%" stop-color="var(--gold)"/>
+        </linearGradient>
+      </defs>
+      <path d="M8.5 14.5A2.5 2.5 0 0011 17a2.5 2.5 0 002.5-2.5c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7.5 7.5 0 11-15 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"
+            fill="url(#flameGrad)" stroke="none"/>
+    </svg>
+    <span>FLARE VAULT</span>
+    <span class="chain-badge" id="chainBadge"><span class="dot"></span> Coston2 · chain 114</span>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="themeToggle" title="Toggle theme">🌙</button>
+    <button class="wallet-btn" id="walletBtn">Connect Wallet</button>
+    <button class="wallet-btn wc-btn" id="wcBtn" title="Scan QR with any wallet app">📷 Scan QR</button>
+  </div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="portfolio">💼 Portfolio Vault</button>
+  <button class="tab-btn" data-tab="inheritance">🗝 Inheritance Vault</button>
+  <button class="tab-btn" data-tab="whisper">🤫 Whisper Market <span class="soon-tag">soon</span></button>
+  <button class="tab-btn" data-tab="flarebox">🤖 FlareBox AI <span class="soon-tag">soon</span></button>
+</nav>
+
+<main>
+<div class="tab-panel" id="tab-portfolio">
+  <p class="intro">
+    A private, cross-chain portfolio tracker on Flare. Prices below are live from the deployed
+    <span class="mono">FtsoV2Consumer</span> contract. Connect your wallet to commit a real, hashed
+    position to <span class="mono">PortfolioVault</span> and interact with it on-chain.
+  </p>
+  <div class="warn-banner" id="wrongNetworkBanner">
+    ⚠ Wrong network detected — this app needs Flare Testnet Coston2 (chain 114). Click Connect Wallet to switch.
+  </div>
+
+  <div class="ticker-grid" id="healthGrid">
+    <div class="health-card"><div class="feed">Latest block</div><div class="value" id="healthBlock">—</div></div>
+    <div class="health-card"><div class="feed">Gas price</div><div class="value" id="healthGas">—</div></div>
+    <div class="health-card"><div class="feed">Your C2FLR balance</div><div class="value" id="healthBalance">connect wallet</div></div>
+  </div>
+
+  <div class="ticker-grid" id="tickerGrid">
+    <div class="ticker-card"><div class="feed">FLR/USD</div><div class="price">loading…</div></div>
+    <div class="ticker-card"><div class="feed">BTC/USD</div><div class="price">loading…</div></div>
+    <div class="ticker-card"><div class="feed">ETH/USD</div><div class="price">loading…</div></div>
+    <div class="ticker-card"><div class="feed">XRP/USD</div><div class="price">loading…</div></div>
+  </div>
+
+  <!-- Commit Position -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="title">🔏 Commit Position</div>
+    </div>
+    <div class="panel-body">
+      <div class="field-label">Holdings (used only to compute a local hash — never sent on-chain)</div>
+      <div class="field-row">
+        <input type="text" id="holdingsInput" value="FLR:128400, FBTC:0.09, WETH:1.85, FXRP:3200" />
+        <button class="btn" id="commitBtn">Commit Hash On-Chain</button>
+      </div>
+      <div class="status-line" id="commitStatus">Connect your wallet to commit a position.</div>
+    </div>
+  </div>
+
+  <!-- Holdings / position status -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="title">🛡️ Your Position <span class="commit-hash mono" id="myCommitHash">no position yet</span>
+        <button class="btn" id="copyHashBtn" style="padding:4px 8px;font-size:11px;" title="Copy your local commitment hash">📋 Copy hash</button>
+      </div>
+      <button class="btn" id="refreshPositionBtn">Refresh from chain</button>
+    </div>
+    <div class="row"><span>Position exists</span><span class="val mono" id="posExists">—</span></div>
+    <div class="row"><span>Last valued at</span><span class="val mono" id="posTimestamp">—</span></div>
+    <div class="row"><span>Export</span><button class="btn" id="downloadSnapshotBtn" style="padding:5px 10px;font-size:11px;">⬇ Download vault snapshot (.json)</button></div>
+    <div class="total-row">
+      <span class="label">LOCAL VALUATION (from your input above)</span>
+      <span class="amount mono" id="totalAmount">$0.00</span>
+    </div>
+  </div>
+
+  <!-- Verify commitment -->
+  <div class="panel">
+    <div class="panel-head"><div class="title">✅ Verify Commitment</div></div>
+    <div class="panel-body">
+      <div class="field-label">Check whether an address's on-chain commitment matches the holdings above</div>
+      <div class="field-row">
+        <input type="text" id="verifyAddrInput" placeholder="0x... address to check (defaults to your wallet)" />
+        <button class="btn" id="verifyBtn">Verify</button>
+      </div>
+      <div class="status-line" id="verifyStatus"></div>
+    </div>
+  </div>
+
+  <!-- Viewer approval -->
+  <div class="panel">
+    <div class="panel-head"><div class="title">👁 Viewer Approval</div></div>
+    <div class="panel-body">
+      <div class="field-label">Grant or revoke an address's permission to view your decrypted valuation off-chain</div>
+      <div class="field-row">
+        <input type="text" id="viewerAddrInput" placeholder="0x... viewer address" />
+        <button class="btn" id="approveBtn">Approve</button>
+        <button class="btn ember" id="revokeBtn">Revoke</button>
+      </div>
+      <div class="status-line" id="viewerStatus"></div>
+    </div>
+  </div>
+
+  <!-- On-chain history (real eth_getLogs, not simulated) -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="title">⛓ On-Chain History <span class="mono" style="font-size:11px;color:var(--cipher)">real events</span></div>
+      <button class="btn" id="loadHistoryBtn">Load from chain</button>
+    </div>
+    <div class="log-body" id="historyBody"><div class="log-line" style="color:var(--redacted)">Connect your wallet, then tap "Load from chain".</div></div>
+  </div>
+
+  <!-- Activity log -->
+  <div class="panel">
+    <div class="panel-head"><div class="title">📟 SESSION LOG</div></div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+
+  <!-- FAssets integration (real, live AssetManager) -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="title">🔗 FAssets Integration <span class="mono" style="font-size:11px;color:var(--cipher)">live FXRP AssetManager</span></div>
+    </div>
+    <div class="panel-body">
+      <div class="field-label">Your deployed FAssetsResolver.sol address (resolves the live FXRP AssetManager via Flare's ContractRegistry)</div>
+      <div class="field-row">
+        <input type="text" id="resolverAddrInput" placeholder="0x... FAssetsResolver contract address" />
+        <button class="btn" id="resolveBtn">Resolve AssetManager</button>
+      </div>
+      <div class="status-line" id="resolveStatus"></div>
+    </div>
+    <div class="row"><span>FXRP AssetManager</span><span class="val mono" id="assetManagerAddr">not resolved</span></div>
+    <div class="row"><span>Available minting agents</span><span class="val mono" id="agentCount">—</span></div>
+    <div class="row"><span>Collateral reservation fee (1 lot)</span><span class="val mono" id="crFee">—</span></div>
+    <div class="panel-body">
+      <div class="field-label">Reserve collateral from the first available agent — a real, on-chain first step of FXRP minting (pays a real fee in C2FLR). Completing the mint afterward requires a real XRP Ledger payment plus a Flare Data Connector proof, which needs credentials only Flare issues — not completable from this browser demo.</div>
+      <button class="btn ember" id="reserveBtn" disabled>Reserve Collateral (1 lot)</button>
+      <div class="status-line" id="reserveStatus"></div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    ⓘ <span class="mono">FtsoV2Consumer</span>:
+    <a class="explorer-link" href="https://coston2-explorer.flare.network/address/0xE6eA788371EbB0620500b048Bae2e1A790fd464C" target="_blank">0xE6eA…464C</a>
+    &nbsp;·&nbsp; <span class="mono">PortfolioVault</span>:
+    <a class="explorer-link" href="https://coston2-explorer.flare.network/address/0x2f3C9E4C839D8a0b8DD26D2073d28c7990938723" target="_blank">0x2f3C…8723</a>
+  </div>
+</div><!-- /tab-portfolio -->
+
+<!-- ================= INHERITANCE VAULT ================= -->
+<div class="tab-panel" id="tab-inheritance" style="display:none">
+  <p class="intro">
+    A digital dead man's switch. Name a beneficiary and check in periodically to prove you're active.
+    If you go silent past your chosen interval, your beneficiary can claim the vault and unlock your
+    encrypted message — all enforced by <span class="mono">InheritanceVault</span> on-chain.
+  </p>
+
+  <div class="panel">
+    <div class="panel-head"><div class="title">🔧 Setup — one-time config</div></div>
+    <div class="panel-body">
+      <div class="field-label">Your deployed InheritanceVault.sol contract address</div>
+      <div class="field-row">
+        <input type="text" id="ivAddrInput" placeholder="0x... InheritanceVault contract address" />
+        <button class="btn" id="ivSaveAddrBtn">Use this contract</button>
+      </div>
+      <div class="status-line" id="ivAddrStatus"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div class="title">🗝 Create Your Vault</div></div>
+    <div class="panel-body">
+      <div class="field-label">Beneficiary address</div>
+      <div class="field-row"><input type="text" id="ivBeneficiaryInput" placeholder="0x... beneficiary address"/></div>
+      <div class="field-label">Check-in interval (how long you can go silent before it unlocks)</div>
+      <div class="field-row">
+        <select id="ivIntervalSelect" style="flex:1;min-width:160px;background:var(--panelAlt);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:13px;">
+          <option value="3600">1 hour (demo/testing)</option>
+          <option value="86400">1 day</option>
+          <option value="2592000" selected>30 days</option>
+          <option value="7776000">90 days</option>
+          <option value="31536000">365 days</option>
+        </select>
+      </div>
+      <div class="field-label">Last message / instructions (encrypted in your browser with real AES-256-GCM before anything touches the network)</div>
+      <div class="field-row"><input type="text" id="ivMessageInput" placeholder="Message for your beneficiary…"/></div>
+      <div class="field-label">Passphrase (share this with your beneficiary out-of-band — never sent anywhere)</div>
+      <div class="field-row"><input type="password" id="ivPassphraseInput" placeholder="A passphrase only your beneficiary will have"/></div>
+      <div class="field-row">
+        <button class="btn" id="ivEncryptBtn">1. Encrypt &amp; download message file</button>
+        <button class="btn" id="ivCreateBtn">2. Create Vault On-Chain</button>
+      </div>
+      <div class="status-line" id="ivCreateStatus"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div class="title">📍 Your Vault Status</div>
+      <button class="btn" id="ivRefreshBtn">Refresh from chain</button>
+    </div>
+    <div class="countdown-hero" id="ivCountdownHero">
+      <div class="countdown-label">TIME UNTIL UNLOCK</div>
+      <div class="countdown-value" id="ivTimeRemainingHero">—</div>
+    </div>
+    <div class="row"><span>Exists</span><span class="val mono" id="ivExists">—</span></div>
+    <div class="row"><span>Beneficiary</span><span class="val mono" id="ivBeneficiary">—</span></div>
+    <div class="row"><span>Last check-in</span><span class="val mono" id="ivLastCheckIn">—</span></div>
+    <div class="row" style="display:none"><span>Time until unlock</span><span class="val mono" id="ivTimeRemaining">—</span></div>
+    <div class="row"><span>Claimed</span><span class="val mono" id="ivClaimed">—</span></div>
+    <div class="total-row">
+      <span class="label">PROOF OF LIFE</span>
+      <button class="btn" id="ivCheckInBtn">✅ Check In Now</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div class="title">👤 Claim as Beneficiary</div></div>
+    <div class="panel-body">
+      <div class="field-label">Vault owner's address (the person who may have gone silent)</div>
+      <div class="field-row">
+        <input type="text" id="ivOwnerToCheckInput" placeholder="0x... owner address"/>
+        <button class="btn" id="ivCheckOwnerBtn">Check status</button>
+      </div>
+      <div class="status-line" id="ivOwnerStatus"></div>
+      <div class="field-row" style="margin-top:8px;">
+        <button class="btn ember" id="ivClaimBtn" disabled>Claim Vault (only works once expired)</button>
+      </div>
+      <div class="status-line" id="ivClaimStatus"></div>
+    </div>
+  </div>
+
+  <div class="log-body" id="ivLogBody" style="border-radius:16px;border:1px solid var(--line);"></div>
+</div><!-- /tab-inheritance -->
+
+<!-- ================= WHISPER MARKET (roadmap) ================= -->
+<div class="tab-panel" id="tab-whisper" style="display:none">
+  <div class="roadmap-card">
+    <div class="roadmap-badge">🤫 VISION — not yet built</div>
+    <h2>Whisper Market — Private Prediction Markets</h2>
+    <p>Current prediction markets expose every bet publicly — your position, your stake, your strategy, all visible before settlement.</p>
+    <p>With Flare Confidential Compute, users could bet privately on elections, sports, crypto prices, and AI outcomes — with nobody able to see your position, stake, or strategy until settlement. The first genuinely private prediction market.</p>
+    <p class="roadmap-why">Why it's not built yet: this depends on the same Flare Confidential Compute infrastructure that <span class="mono">PortfolioVault</span>'s private valuation layer needs — currently gated behind credentials only Flare's team can issue.</p>
+  </div>
+</div>
+
+<!-- ================= FLAREBOX AI (roadmap) ================= -->
+<div class="tab-panel" id="tab-flarebox" style="display:none">
+  <div class="roadmap-card">
+    <div class="roadmap-badge">🤖 VISION — not yet built</div>
+    <h2>FlareBox AI — Sell AI Without Revealing It</h2>
+    <p>Companies with valuable trading models, research models, or proprietary AI won't share them — and users don't want to reveal what they're asking either.</p>
+    <p>Upload a model into a Flare Confidential Compute enclave. Users send encrypted prompts. The model executes privately inside the enclave, and results return — the model is never exposed, and neither is the user's query. Two-way confidentiality, verified by hardware rather than by trust.</p>
+    <p class="roadmap-why">Why it's not built yet: same FCC dependency as Whisper Market above — a real, working idea waiting on infrastructure outside this project's control.</p>
+  </div>
+</div>
+
+</main>
+</div><!-- /appShell -->
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
